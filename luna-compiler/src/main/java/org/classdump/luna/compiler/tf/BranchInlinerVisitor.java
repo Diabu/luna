@@ -18,11 +18,13 @@ package org.classdump.luna.compiler.tf;
 
 import java.util.Objects;
 import org.classdump.luna.compiler.analysis.TypeInfo;
+import org.classdump.luna.compiler.analysis.types.LiteralType;
 import org.classdump.luna.compiler.analysis.types.LuaTypes;
 import org.classdump.luna.compiler.analysis.types.Type;
 import org.classdump.luna.compiler.ir.Branch;
 import org.classdump.luna.compiler.ir.Jmp;
 import org.classdump.luna.compiler.ir.ToNext;
+import org.omg.Messaging.SyncScopeHelper;
 
 class BranchInlinerVisitor extends CodeTransformerVisitor {
 
@@ -65,13 +67,17 @@ class BranchInlinerVisitor extends CodeTransformerVisitor {
   @Override
   public void visit(Branch.Condition.Bool cond) {
     Type t = types.typeOf(cond.addr());
-    if (t.isSubtypeOf(LuaTypes.NIL)) {
+    Object litVal = t instanceof LiteralType ? ((LiteralType<?>) t).value() : null;
+
+    if(litVal instanceof Boolean) {
+      inline = cond.expected() == (Boolean) litVal;
+    }else if (t.isSubtypeOf(LuaTypes.NIL)) {
       // t evaluates to false
       inline = !cond.expected();
-    } else if (t.isSubtypeOf(LuaTypes.ANY) && !t.equals(LuaTypes.ANY) && !t
-        .isSubtypeOf(LuaTypes.BOOLEAN)) {
-      // t evaluates to true
-      inline = cond.expected();
+// Breaks ternary
+//    } else if (t.isSubtypeOf(LuaTypes.ANY) && !t.equals(LuaTypes.ANY) && !t.isSubtypeOf(LuaTypes.BOOLEAN)) {
+//      // t evaluates to true
+//      inline = cond.expected();
     } else {
       inline = null;
     }
